@@ -57,6 +57,31 @@ All colors MUST be HSL.
   }
 }
 
+@layer utilities {
+  .hover-scale {
+    @apply transition-transform duration-200 hover:scale-105;
+  }
+  
+  .shadow-glow {
+    box-shadow: var(--glow-primary);
+  }
+  
+  .animate-glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes glow-pulse {
+    0%, 100% {
+      opacity: 1;
+      filter: drop-shadow(0 0 8px hsl(263 70% 60%));
+    }
+    50% {
+      opacity: 0.8;
+      filter: drop-shadow(0 0 16px hsl(263 70% 60%));
+    }
+  }
+}
+
 @layer base {
   * {
     @apply border-border;

@@ -1,6 +1,7 @@
-import { Download, RefreshCw, Play, Pause } from "lucide-react";
+import { Download, RefreshCw, Play, Pause, SkipForward, SkipBack } from "lucide-react";
 import { Button } from "./ui/button";
 import { useState, useEffect, useRef } from "react";
+import { Progress } from "./ui/progress";
 import type { Scene } from "@/hooks/useVideoGeneration";
 
 interface VideoPreviewProps {
@@ -13,6 +14,8 @@ interface VideoPreviewProps {
 export const VideoPreview = ({ videoUrl, scenes, images, onReset }: VideoPreviewProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const hasScenes = scenes && scenes.length > 0;
@@ -22,10 +25,22 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset }: VideoPreview
     if (audioRef.current) {
       audioRef.current.onended = () => {
         if (hasScenes && currentSceneIndex < scenes.length - 1) {
-          setCurrentSceneIndex(prev => prev + 1);
+          setIsTransitioning(true);
+          setTimeout(() => {
+            setCurrentSceneIndex(prev => prev + 1);
+            setIsTransitioning(false);
+          }, 300);
         } else {
           setIsPlaying(false);
           setCurrentSceneIndex(0);
+          setAudioProgress(0);
+        }
+      };
+      
+      audioRef.current.ontimeupdate = () => {
+        if (audioRef.current) {
+          const progress = (audioRef.current.currentTime / audioRef.current.duration) * 100;
+          setAudioProgress(progress || 0);
         }
       };
     }
@@ -44,6 +59,30 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset }: VideoPreview
     setIsPlaying(!isPlaying);
   };
 
+  const nextScene = () => {
+    if (hasScenes && currentSceneIndex < scenes.length - 1) {
+      setIsTransitioning(true);
+      setIsPlaying(false);
+      setTimeout(() => {
+        setCurrentSceneIndex(prev => prev + 1);
+        setIsTransitioning(false);
+        setAudioProgress(0);
+      }, 300);
+    }
+  };
+
+  const previousScene = () => {
+    if (currentSceneIndex > 0) {
+      setIsTransitioning(true);
+      setIsPlaying(false);
+      setTimeout(() => {
+        setCurrentSceneIndex(prev => prev - 1);
+        setIsTransitioning(false);
+        setAudioProgress(0);
+      }, 300);
+    }
+  };
+
   const handleDownload = () => {
     if (!images || images.length === 0) return;
 
@@ -59,17 +98,19 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset }: VideoPreview
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-8 animate-fade-in">
-      <div className="bg-card/50 backdrop-blur-sm border border-border rounded-2xl overflow-hidden shadow-elevated">
+      <div className="bg-card/50 backdrop-blur-sm border border-border rounded-2xl overflow-hidden shadow-glow">
         {/* Video Player Area */}
-        <div className="relative aspect-video bg-muted/20 flex items-center justify-center">
+        <div className="relative aspect-video bg-muted/20 flex items-center justify-center overflow-hidden">
           {hasScenes ? (
             <>
-              {/* Current Scene Image */}
+              {/* Current Scene Image with Transition */}
               {currentScene?.imageUrl && (
                 <img
                   src={currentScene.imageUrl}
                   alt={`Scene ${currentSceneIndex + 1}`}
-                  className="w-full h-full object-cover"
+                  className={`w-full h-full object-cover transition-all duration-300 ${
+                    isTransitioning ? "opacity-0 scale-95" : "opacity-100 scale-100"
+                  }`}
                 />
               )}
               
@@ -82,23 +123,46 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset }: VideoPreview
                 </div>
               )}
 
-              {/* Play/Pause Button */}
-              <button
-                onClick={togglePlayback}
-                className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-primary/90 hover:bg-primary text-white rounded-full p-6 transition-all duration-300 shadow-glow"
-              >
-                {isPlaying ? (
-                  <Pause className="w-8 h-8" />
-                ) : (
-                  <Play className="w-8 h-8 ml-1" />
-                )}
-              </button>
+              {/* Controls Overlay */}
+              <div className="absolute inset-0 flex items-center justify-center gap-4">
+                <button
+                  onClick={previousScene}
+                  disabled={currentSceneIndex === 0}
+                  className="bg-black/70 hover:bg-black/90 text-white rounded-full p-4 transition-all duration-300 disabled:opacity-30 hover-scale disabled:hover:scale-100"
+                >
+                  <SkipBack className="w-6 h-6" />
+                </button>
 
-              {/* Scene Progress */}
-              <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm px-3 py-1 rounded-full">
+                <button
+                  onClick={togglePlayback}
+                  className="bg-primary/90 hover:bg-primary text-white rounded-full p-8 transition-all duration-300 shadow-glow hover-scale"
+                >
+                  {isPlaying ? (
+                    <Pause className="w-10 h-10" />
+                  ) : (
+                    <Play className="w-10 h-10 ml-1" />
+                  )}
+                </button>
+
+                <button
+                  onClick={nextScene}
+                  disabled={currentSceneIndex === scenes.length - 1}
+                  className="bg-black/70 hover:bg-black/90 text-white rounded-full p-4 transition-all duration-300 disabled:opacity-30 hover-scale disabled:hover:scale-100"
+                >
+                  <SkipForward className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Scene Counter */}
+              <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm px-4 py-2 rounded-full animate-fade-in">
                 <span className="text-white text-sm font-medium">
                   Scene {currentSceneIndex + 1} / {scenes.length}
                 </span>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="absolute bottom-20 left-4 right-4">
+                <Progress value={audioProgress} className="h-1 bg-black/50" />
               </div>
             </>
           ) : images && images.length > 0 ? (
@@ -135,7 +199,7 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset }: VideoPreview
           <Button
             onClick={onReset}
             variant="outline"
-            className="flex-1 border-border hover:border-primary transition-all duration-300"
+            className="flex-1 border-border hover:border-primary transition-all duration-300 hover-scale"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Create New
@@ -143,7 +207,7 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset }: VideoPreview
           
           {(videoUrl || (images && images.length > 0)) && (
             <Button
-              className="flex-1 bg-gradient-primary hover:opacity-90 transition-all duration-300 shadow-glow"
+              className="flex-1 bg-gradient-primary hover:opacity-90 transition-all duration-300 shadow-glow hover-scale"
               onClick={handleDownload}
             >
               <Download className="w-4 h-4 mr-2" />
