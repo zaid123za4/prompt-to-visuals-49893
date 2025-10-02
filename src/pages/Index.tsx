@@ -63,6 +63,7 @@ const Index = () => {
       
       {!isGenerating && generatedScenes.length > 0 && (
         <VideoPreview 
+          scenes={generatedScenes}
           images={generatedScenes.filter(s => s.imageUrl).map(s => s.imageUrl!)}
           onReset={handleReset} 
         />

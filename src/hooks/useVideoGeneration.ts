@@ -9,6 +9,7 @@ export interface Scene {
   narration: string;
   duration: number;
   imageUrl?: string;
+  audioUrl?: string;
   status?: string;
 }
 
@@ -67,15 +68,16 @@ export const useVideoGeneration = () => {
       setScript(scriptData);
       setProgress(40);
 
-      // Step 2: Generate images for each scene
-      setCurrentStep("Creating visuals...");
-      const scenesWithImages: Scene[] = [];
+      // Step 2: Generate images and voiceovers for each scene
+      setCurrentStep("Creating visuals and voiceovers...");
+      const scenesWithMedia: Scene[] = [];
 
       for (let i = 0; i < scriptData.scenes.length; i++) {
         const scene = scriptData.scenes[i];
-        setProgress(40 + (i / scriptData.scenes.length) * 40);
+        setProgress(40 + (i / scriptData.scenes.length) * 50);
 
         try {
+          // Generate image
           const { data: imageData, error: imageError } = await supabase.functions.invoke('generate-image', {
             body: { 
               description: scene.description,
@@ -83,32 +85,43 @@ export const useVideoGeneration = () => {
             }
           });
 
-          if (imageError) {
-            console.error('Image generation error for scene', i, imageError);
-            scenesWithImages.push({
+          // Generate voiceover
+          const { data: audioData, error: audioError } = await supabase.functions.invoke('generate-voiceover', {
+            body: { 
+              text: scene.narration,
+              voice: 'alloy'
+            }
+          });
+
+          if (imageError || audioError) {
+            console.error('Generation error for scene', i, { imageError, audioError });
+            scenesWithMedia.push({
               ...scene,
-              imageUrl: undefined,
+              imageUrl: imageError ? undefined : imageData?.imageUrl,
+              audioUrl: audioError ? undefined : `data:audio/mp3;base64,${audioData?.audioContent}`,
               status: 'failed'
             });
           } else {
-            scenesWithImages.push({
+            scenesWithMedia.push({
               ...scene,
               imageUrl: imageData.imageUrl,
+              audioUrl: `data:audio/mp3;base64,${audioData.audioContent}`,
               status: 'completed'
             });
           }
         } catch (error) {
-          console.error('Error generating image for scene', i, error);
-          scenesWithImages.push({
+          console.error('Error generating media for scene', i, error);
+          scenesWithMedia.push({
             ...scene,
             imageUrl: undefined,
+            audioUrl: undefined,
             status: 'failed'
           });
         }
       }
 
-      setGeneratedScenes(scenesWithImages);
-      setProgress(80);
+      setGeneratedScenes(scenesWithMedia);
+      setProgress(90);
 
       // Step 3: Save project and deduct credits
       setCurrentStep("Saving project...");
@@ -131,11 +144,12 @@ export const useVideoGeneration = () => {
       if (projectError) throw projectError;
 
       // Save scenes
-      const scenesData = scenesWithImages.map((scene, idx) => ({
+      const scenesData = scenesWithMedia.map((scene, idx) => ({
         project_id: project.id,
         scene_number: idx + 1,
         description: scene.description,
         image_url: scene.imageUrl,
+        audio_url: scene.audioUrl,
         duration: scene.duration,
         status: scene.status as any
       }));
@@ -159,7 +173,7 @@ export const useVideoGeneration = () => {
 
       return {
         script: scriptData,
-        scenes: scenesWithImages,
+        scenes: scenesWithMedia,
         projectId: project.id
       };
 

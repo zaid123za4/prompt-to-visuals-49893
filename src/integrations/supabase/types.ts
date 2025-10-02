@@ -14,7 +14,146 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          credits: number | null
+          display_name: string | null
+          id: string
+          subscription_tier:
+            | Database["public"]["Enums"]["subscription_tier"]
+            | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          credits?: number | null
+          display_name?: string | null
+          id?: string
+          subscription_tier?:
+            | Database["public"]["Enums"]["subscription_tier"]
+            | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          credits?: number | null
+          display_name?: string | null
+          id?: string
+          subscription_tier?:
+            | Database["public"]["Enums"]["subscription_tier"]
+            | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          created_at: string | null
+          duration: number | null
+          id: string
+          prompt: string
+          script: Json | null
+          settings: Json | null
+          status: Database["public"]["Enums"]["video_status"] | null
+          style: Database["public"]["Enums"]["video_style"]
+          thumbnail_url: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          duration?: number | null
+          id?: string
+          prompt: string
+          script?: Json | null
+          settings?: Json | null
+          status?: Database["public"]["Enums"]["video_status"] | null
+          style: Database["public"]["Enums"]["video_style"]
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          duration?: number | null
+          id?: string
+          prompt?: string
+          script?: Json | null
+          settings?: Json | null
+          status?: Database["public"]["Enums"]["video_status"] | null
+          style?: Database["public"]["Enums"]["video_style"]
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
+      scenes: {
+        Row: {
+          audio_url: string | null
+          created_at: string | null
+          description: string
+          duration: number | null
+          id: string
+          image_url: string | null
+          project_id: string
+          scene_number: number
+          status: Database["public"]["Enums"]["video_status"] | null
+          updated_at: string | null
+          video_url: string | null
+          voiceover_url: string | null
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string | null
+          description: string
+          duration?: number | null
+          id?: string
+          image_url?: string | null
+          project_id: string
+          scene_number: number
+          status?: Database["public"]["Enums"]["video_status"] | null
+          updated_at?: string | null
+          video_url?: string | null
+          voiceover_url?: string | null
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string | null
+          description?: string
+          duration?: number | null
+          id?: string
+          image_url?: string | null
+          project_id?: string
+          scene_number?: number
+          status?: Database["public"]["Enums"]["video_status"] | null
+          updated_at?: string | null
+          video_url?: string | null
+          voiceover_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +162,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      subscription_tier: "free" | "pro" | "team"
+      video_status: "draft" | "generating" | "completed" | "failed"
+      video_style:
+        | "cinematic"
+        | "anime"
+        | "vlog"
+        | "realistic"
+        | "advertisement"
+        | "documentary"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +297,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      subscription_tier: ["free", "pro", "team"],
+      video_status: ["draft", "generating", "completed", "failed"],
+      video_style: [
+        "cinematic",
+        "anime",
+        "vlog",
+        "realistic",
+        "advertisement",
+        "documentary",
+      ],
+    },
   },
 } as const
