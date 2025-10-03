@@ -18,47 +18,82 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset }: VideoPreview
   const [audioProgress, setAudioProgress] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
   const { toast } = useToast();
 
   const hasScenes = scenes && scenes.length > 0;
   const currentScene = hasScenes ? scenes[currentSceneIndex] : null;
 
+  // Handle text-to-speech playback for scenes
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.onended = () => {
-        if (hasScenes && currentSceneIndex < scenes.length - 1) {
+    if (!hasScenes || !currentScene?.narrationText) return;
+
+    // Clean up previous speech
+    if (speechRef.current) {
+      window.speechSynthesis.cancel();
+      speechRef.current = null;
+    }
+
+    if (isPlaying) {
+      const utterance = new SpeechSynthesisUtterance(currentScene.narrationText);
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+      
+      utterance.onend = () => {
+        if (currentSceneIndex < scenes.length - 1) {
           setIsTransitioning(true);
           setTimeout(() => {
             setCurrentSceneIndex(prev => prev + 1);
             setIsTransitioning(false);
-          }, 300);
+            setAudioProgress(0);
+          }, 500);
         } else {
           setIsPlaying(false);
           setCurrentSceneIndex(0);
           setAudioProgress(0);
         }
       };
-      
-      audioRef.current.ontimeupdate = () => {
-        if (audioRef.current) {
-          const progress = (audioRef.current.currentTime / audioRef.current.duration) * 100;
-          setAudioProgress(progress || 0);
-        }
-      };
-    }
-  }, [currentSceneIndex, hasScenes, scenes]);
 
-  useEffect(() => {
-    if (isPlaying && currentScene?.audioUrl && audioRef.current) {
-      audioRef.current.src = currentScene.audioUrl;
-      audioRef.current.play();
-    } else if (audioRef.current) {
-      audioRef.current.pause();
+      // Simulate progress
+      const duration = currentScene.narrationText.length * 60; // Rough estimate
+      let elapsed = 0;
+      const interval = setInterval(() => {
+        elapsed += 100;
+        setAudioProgress((elapsed / duration) * 100);
+        if (elapsed >= duration) {
+          clearInterval(interval);
+        }
+      }, 100);
+
+      utterance.onstart = () => {
+        elapsed = 0;
+      };
+
+      speechRef.current = utterance;
+      window.speechSynthesis.speak(utterance);
+
+      return () => {
+        clearInterval(interval);
+      };
+    } else {
+      window.speechSynthesis.cancel();
+      setAudioProgress(0);
     }
-  }, [isPlaying, currentSceneIndex, currentScene]);
+
+    return () => {
+      window.speechSynthesis.cancel();
+      if (speechRef.current) {
+        speechRef.current = null;
+      }
+    };
+  }, [isPlaying, currentSceneIndex, hasScenes, currentScene, scenes]);
 
   const togglePlayback = () => {
     setIsPlaying(!isPlaying);
+    if (!isPlaying) {
+      setAudioProgress(0);
+    }
   };
 
   const nextScene = () => {

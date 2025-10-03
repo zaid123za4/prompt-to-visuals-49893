@@ -10,6 +10,7 @@ export interface Scene {
   duration: number;
   imageUrl?: string;
   audioUrl?: string;
+  narrationText?: string;
   status?: string;
 }
 
@@ -85,11 +86,10 @@ export const useVideoGeneration = () => {
             }
           });
 
-          // Generate voiceover
+          // Store narration text for client-side speech synthesis
           const { data: audioData, error: audioError } = await supabase.functions.invoke('generate-voiceover', {
             body: { 
-              text: scene.narration,
-              voice: 'alloy'
+              text: scene.narration
             }
           });
 
@@ -98,14 +98,14 @@ export const useVideoGeneration = () => {
             scenesWithMedia.push({
               ...scene,
               imageUrl: imageError ? undefined : imageData?.imageUrl,
-              audioUrl: audioError ? undefined : `data:audio/mp3;base64,${audioData?.audioContent}`,
-              status: 'failed'
+              narrationText: audioError ? scene.narration : audioData?.text,
+              status: 'completed'
             });
           } else {
             scenesWithMedia.push({
               ...scene,
               imageUrl: imageData.imageUrl,
-              audioUrl: `data:audio/mp3;base64,${audioData.audioContent}`,
+              narrationText: audioData.text,
               status: 'completed'
             });
           }
