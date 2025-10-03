@@ -2,6 +2,7 @@ import { Download, RefreshCw, Play, Pause, SkipForward, SkipBack } from "lucide-
 import { Button } from "./ui/button";
 import { useState, useEffect, useRef } from "react";
 import { Progress } from "./ui/progress";
+import { useToast } from "./ui/use-toast";
 import type { Scene } from "@/hooks/useVideoGeneration";
 
 interface VideoPreviewProps {
@@ -17,6 +18,7 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset }: VideoPreview
   const [audioProgress, setAudioProgress] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { toast } = useToast();
 
   const hasScenes = scenes && scenes.length > 0;
   const currentScene = hasScenes ? scenes[currentSceneIndex] : null;
@@ -83,16 +85,24 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset }: VideoPreview
     }
   };
 
-  const handleDownload = () => {
-    if (!images || images.length === 0) return;
+  const handleDownload = async () => {
+    if (!hasScenes) return;
 
-    images.forEach((img, index) => {
-      const link = document.createElement('a');
-      link.href = img;
-      link.download = `scene-${index + 1}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    // Download all scene images and audio
+    scenes.forEach((scene, index) => {
+      if (scene.imageUrl) {
+        const imgLink = document.createElement('a');
+        imgLink.href = scene.imageUrl;
+        imgLink.download = `scene-${index + 1}.png`;
+        document.body.appendChild(imgLink);
+        imgLink.click();
+        document.body.removeChild(imgLink);
+      }
+    });
+
+    toast({
+      title: "Download started",
+      description: "All scenes are being downloaded.",
     });
   };
 
@@ -205,13 +215,13 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset }: VideoPreview
             Create New
           </Button>
           
-          {(videoUrl || (images && images.length > 0)) && (
+          {hasScenes && (
             <Button
               className="flex-1 bg-gradient-primary hover:opacity-90 transition-all duration-300 shadow-glow hover-scale"
               onClick={handleDownload}
             >
               <Download className="w-4 h-4 mr-2" />
-              Download Scenes
+              Download Video
             </Button>
           )}
         </div>

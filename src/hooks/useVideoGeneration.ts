@@ -123,8 +123,8 @@ export const useVideoGeneration = () => {
       setGeneratedScenes(scenesWithMedia);
       setProgress(90);
 
-      // Step 3: Save project and deduct credits
-      setCurrentStep("Saving project...");
+      // Step 3: Stitch video
+      setCurrentStep("Creating final video...");
       setProgress(90);
 
       const { data: project, error: projectError } = await supabase
@@ -155,6 +155,16 @@ export const useVideoGeneration = () => {
       }));
 
       await supabase.from('scenes').insert(scenesData);
+
+      // Stitch video
+      const { data: videoData, error: videoError } = await supabase.functions.invoke('stitch-video', {
+        body: { projectId: project.id }
+      });
+
+      if (videoError) {
+        console.error('Video stitching warning:', videoError);
+        // Continue anyway, video can be played scene-by-scene
+      }
 
       // Deduct credits
       await supabase
