@@ -10,7 +10,6 @@ export interface Scene {
   duration: number;
   imageUrl?: string;
   audioUrl?: string;
-  narrationText?: string;
   status?: string;
 }
 
@@ -28,7 +27,7 @@ export const useVideoGeneration = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const generateVideo = async (prompt: string, style: string) => {
+  const generateVideo = async (prompt: string, style: string, duration: number) => {
     setIsGenerating(true);
     setProgress(0);
     setScript(null);
@@ -60,7 +59,7 @@ export const useVideoGeneration = () => {
       setProgress(20);
 
       const { data: scriptData, error: scriptError } = await supabase.functions.invoke('generate-script', {
-        body: { prompt, style }
+        body: { prompt, style, duration }
       });
 
       if (scriptError) throw scriptError;
@@ -86,7 +85,7 @@ export const useVideoGeneration = () => {
             }
           });
 
-          // Store narration text for client-side speech synthesis
+          // Generate voiceover using Groq TTS
           const { data: audioData, error: audioError } = await supabase.functions.invoke('generate-voiceover', {
             body: { 
               text: scene.narration
@@ -98,14 +97,14 @@ export const useVideoGeneration = () => {
             scenesWithMedia.push({
               ...scene,
               imageUrl: imageError ? undefined : imageData?.imageUrl,
-              narrationText: audioError ? scene.narration : audioData?.text,
+              audioUrl: audioError ? undefined : audioData?.audioUrl,
               status: 'completed'
             });
           } else {
             scenesWithMedia.push({
               ...scene,
               imageUrl: imageData.imageUrl,
-              narrationText: audioData.text,
+              audioUrl: audioData.audioUrl,
               status: 'completed'
             });
           }

@@ -24,23 +24,21 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset }: VideoPreview
   const hasScenes = scenes && scenes.length > 0;
   const currentScene = hasScenes ? scenes[currentSceneIndex] : null;
 
-  // Handle text-to-speech playback for scenes
+  // Handle audio playback for scenes
   useEffect(() => {
-    if (!hasScenes || !currentScene?.narrationText) return;
+    if (!hasScenes || !currentScene?.audioUrl) return;
 
-    // Clean up previous speech
-    if (speechRef.current) {
-      window.speechSynthesis.cancel();
-      speechRef.current = null;
+    // Clean up previous audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
     }
 
     if (isPlaying) {
-      const utterance = new SpeechSynthesisUtterance(currentScene.narrationText);
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
-      utterance.volume = 1;
+      const audio = new Audio(currentScene.audioUrl);
+      audioRef.current = audio;
       
-      utterance.onend = () => {
+      audio.onended = () => {
         if (currentSceneIndex < scenes.length - 1) {
           setIsTransitioning(true);
           setTimeout(() => {
@@ -55,39 +53,30 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset }: VideoPreview
         }
       };
 
-      // Simulate progress
-      const duration = currentScene.narrationText.length * 60; // Rough estimate
-      let elapsed = 0;
-      const interval = setInterval(() => {
-        elapsed += 100;
-        setAudioProgress((elapsed / duration) * 100);
-        if (elapsed >= duration) {
-          clearInterval(interval);
+      audio.ontimeupdate = () => {
+        if (audio.duration) {
+          setAudioProgress((audio.currentTime / audio.duration) * 100);
         }
-      }, 100);
-
-      utterance.onstart = () => {
-        elapsed = 0;
       };
 
-      speechRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
+      audio.play().catch(err => {
+        console.error('Audio playback error:', err);
+        toast({
+          title: "Playback error",
+          description: "Failed to play audio",
+          variant: "destructive",
+        });
+      });
 
       return () => {
-        clearInterval(interval);
+        audio.pause();
+        audio.onended = null;
+        audio.ontimeupdate = null;
       };
     } else {
-      window.speechSynthesis.cancel();
       setAudioProgress(0);
     }
-
-    return () => {
-      window.speechSynthesis.cancel();
-      if (speechRef.current) {
-        speechRef.current = null;
-      }
-    };
-  }, [isPlaying, currentSceneIndex, hasScenes, currentScene, scenes]);
+  }, [isPlaying, currentSceneIndex, hasScenes, currentScene, scenes, toast]);
 
   const togglePlayback = () => {
     setIsPlaying(!isPlaying);

@@ -3,20 +3,22 @@ import { Wand2, Loader2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { StyleSelector, VideoStyle } from "./StyleSelector";
+import { DurationSelector, VideoDuration } from "./DurationSelector";
 
 interface PromptInputProps {
-  onGenerate: (prompt: string, style: VideoStyle) => void;
+  onGenerate: (prompt: string, style: VideoStyle, duration: VideoDuration) => void;
   isGenerating: boolean;
 }
 
 export const PromptInput = ({ onGenerate, isGenerating }: PromptInputProps) => {
   const [prompt, setPrompt] = useState("");
   const [selectedStyle, setSelectedStyle] = useState<VideoStyle>("cinematic");
+  const [selectedDuration, setSelectedDuration] = useState<VideoDuration>(30);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (prompt.trim() && !isGenerating) {
-      onGenerate(prompt, selectedStyle);
+      onGenerate(prompt, selectedStyle, selectedDuration);
     }
   };
 
@@ -36,6 +38,11 @@ export const PromptInput = ({ onGenerate, isGenerating }: PromptInputProps) => {
         <StyleSelector
           selectedStyle={selectedStyle}
           onStyleChange={setSelectedStyle}
+        />
+
+        <DurationSelector
+          selectedDuration={selectedDuration}
+          onDurationChange={setSelectedDuration}
         />
 
         <Button

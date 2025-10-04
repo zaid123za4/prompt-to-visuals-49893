@@ -8,6 +8,7 @@ import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { useVideoGeneration } from "@/hooks/useVideoGeneration";
 import type { VideoStyle } from "@/components/StyleSelector";
+import type { VideoDuration } from "@/components/DurationSelector";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -27,14 +28,14 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleGenerate = async (prompt: string, style: VideoStyle) => {
+  const handleGenerate = async (prompt: string, style: VideoStyle, duration: VideoDuration) => {
     if (!user) {
       navigate("/auth");
       return;
     }
 
     try {
-      await generateVideo(prompt, style);
+      await generateVideo(prompt, style, duration);
     } catch (error) {
       console.error('Generation failed:', error);
     }

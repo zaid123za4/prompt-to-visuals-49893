@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, style } = await req.json();
+    const { prompt, style, duration = 30 } = await req.json();
 
     if (!prompt) {
       throw new Error('Prompt is required');
@@ -32,8 +32,14 @@ serve(async (req) => {
       documentary: 'Create an educational documentary script with informative visuals and authoritative narration.'
     };
 
-    const systemPrompt = `You are a professional video script writer. Create a detailed video script with 4-6 scenes.
+    const numberOfScenes = Math.ceil(duration / 10); // ~10 seconds per scene
+    const sceneDuration = Math.floor(duration / numberOfScenes);
+    
+    const systemPrompt = `You are a professional video script writer. Create a detailed video script with exactly ${numberOfScenes} scenes.
 ${stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.cinematic}
+
+IMPORTANT: The total video must be EXACTLY ${duration} seconds. Each scene should be approximately ${sceneDuration} seconds.
+The narration should be appropriate for the duration - about 3-4 words per second of speaking time.
 
 Return ONLY a JSON object with this exact structure:
 {
@@ -42,8 +48,8 @@ Return ONLY a JSON object with this exact structure:
     {
       "scene_number": 1,
       "description": "Visual description for image generation (detailed, specific)",
-      "narration": "Voiceover text for this scene",
-      "duration": 5
+      "narration": "Voiceover text for this scene (should take about ${sceneDuration} seconds to speak)",
+      "duration": ${sceneDuration}
     }
   ]
 }
