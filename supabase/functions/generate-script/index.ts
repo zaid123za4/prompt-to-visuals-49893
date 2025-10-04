@@ -32,27 +32,37 @@ serve(async (req) => {
       documentary: 'Create an educational documentary script with informative visuals and authoritative narration.'
     };
 
-    const numberOfScenes = Math.ceil(duration / 10); // ~10 seconds per scene
+    // Calculate optimal number of scenes (5-8 seconds per scene works best for TTS)
+    const numberOfScenes = Math.max(3, Math.min(8, Math.ceil(duration / 7)));
     const sceneDuration = Math.floor(duration / numberOfScenes);
+    const lastSceneDuration = duration - (sceneDuration * (numberOfScenes - 1)); // Adjust last scene for exact total
     
-    const systemPrompt = `You are a professional video script writer. Create a detailed video script with exactly ${numberOfScenes} scenes.
+    const systemPrompt = `You are a professional video script writer. Create a detailed video script with EXACTLY ${numberOfScenes} scenes.
 ${stylePrompts[style as keyof typeof stylePrompts] || stylePrompts.cinematic}
 
-IMPORTANT: The total video must be EXACTLY ${duration} seconds. Each scene should be approximately ${sceneDuration} seconds.
-The narration should be appropriate for the duration - about 3-4 words per second of speaking time.
+CRITICAL REQUIREMENTS:
+- Total video MUST be EXACTLY ${duration} seconds total
+- Scenes 1-${numberOfScenes - 1}: Each EXACTLY ${sceneDuration} seconds
+- Scene ${numberOfScenes}: EXACTLY ${lastSceneDuration} seconds
+- Narration length MUST match duration: approximately 2.5-3 words per second (e.g., ${sceneDuration} seconds = ${Math.floor(sceneDuration * 2.5)}-${Math.ceil(sceneDuration * 3)} words)
+- Count your words carefully to match the exact scene duration
 
-Return ONLY a JSON object with this exact structure:
+Return ONLY a JSON object with this exact structure (no markdown, no explanations):
 {
   "title": "Video Title",
   "scenes": [
     {
       "scene_number": 1,
-      "description": "Visual description for image generation (detailed, specific)",
-      "narration": "Voiceover text for this scene (should take about ${sceneDuration} seconds to speak)",
+      "description": "Detailed visual description for AI image generation",
+      "narration": "Narration text matching the EXACT duration",
       "duration": ${sceneDuration}
-    }
+    },
+    ...more scenes with scene ${numberOfScenes} having duration ${lastSceneDuration}
   ]
 }
+
+EXAMPLE for a ${sceneDuration}-second scene narration:
+"${sceneDuration === 5 ? "A beautiful sunset paints the sky orange and pink." : sceneDuration === 7 ? "The camera slowly pans across the vast landscape, revealing mountains in the distance." : "Two cats engage in an intense boxing match under bright stage lights, their gloves gleaming."}"
 
 Make descriptions vivid and specific for AI image generation. Keep narration concise and impactful.`;
 

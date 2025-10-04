@@ -12,11 +12,14 @@ serve(async (req) => {
   }
 
   try {
-    const { text } = await req.json();
+    const { text, duration } = await req.json();
 
     if (!text) {
       throw new Error('Text is required');
     }
+
+    // Expected duration helps us validate audio length
+    const expectedDuration = duration || 5;
 
     console.log('Processing voiceover request for text:', text.substring(0, 50) + '...');
 

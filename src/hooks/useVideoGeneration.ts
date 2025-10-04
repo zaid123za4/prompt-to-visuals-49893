@@ -88,7 +88,8 @@ export const useVideoGeneration = () => {
           // Generate voiceover using Groq TTS
           const { data: audioData, error: audioError } = await supabase.functions.invoke('generate-voiceover', {
             body: { 
-              text: scene.narration
+              text: scene.narration,
+              duration: scene.duration
             }
           });
 
