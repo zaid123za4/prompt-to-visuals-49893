@@ -2,8 +2,8 @@ import { Download, RefreshCw, Play, Pause, SkipForward, SkipBack, RotateCcw } fr
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { useState, useEffect, useRef } from "react";
-import { Progress } from "./ui/progress";
 import { useToast } from "./ui/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Scene } from "@/hooks/useVideoGeneration";
 
 interface VideoPreviewProps {
@@ -26,10 +26,9 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
   const hasScenes = scenes && scenes.length > 0;
   const currentScene = hasScenes ? scenes[currentSceneIndex] : null;
 
-  // 🎧 Handle audio playback (for scene preview mode)
+  // 🎧 Scene audio logic
   useEffect(() => {
     if (videoUrl || !hasScenes || !currentScene?.audioUrl) return;
-
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -75,62 +74,31 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
     }
   }, [isPlaying, currentSceneIndex, hasScenes, currentScene, scenes, toast, videoUrl]);
 
-  // ▶️ Toggle scene playback
-  const togglePlayback = () => {
-    setIsPlaying(!isPlaying);
-    if (!isPlaying) {
-      setAudioProgress(0);
-    }
-  };
+  // ▶️ Scene controls
+  const togglePlayback = () => setIsPlaying(!isPlaying);
+  const nextScene = () => currentSceneIndex < (scenes?.length ?? 0) - 1 && setCurrentSceneIndex(i => i + 1);
+  const previousScene = () => currentSceneIndex > 0 && setCurrentSceneIndex(i => i - 1);
 
-  const nextScene = () => {
-    if (hasScenes && currentSceneIndex < scenes.length - 1) {
-      setIsPlaying(false);
-      setCurrentSceneIndex(prev => prev + 1);
-      setAudioProgress(0);
-    }
-  };
-
-  const previousScene = () => {
-    if (currentSceneIndex > 0) {
-      setIsPlaying(false);
-      setCurrentSceneIndex(prev => prev - 1);
-      setAudioProgress(0);
-    }
-  };
-
-  // 💾 Handle video download (Blob-safe + toast feedback)
+  // 💾 Handle video download
   const handleDownload = async () => {
     if (!videoUrl) return;
-
     try {
       setIsDownloading(true);
-      toast({
-        title: "Preparing download...",
-        description: "Your video is being fetched...",
-      });
-
+      toast({ title: "Preparing download...", description: "Your video is being fetched..." });
       const response = await fetch(videoUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-
       const a = document.createElement("a");
       a.href = url;
       a.download = `video-${projectId || Date.now()}.mp4`;
-      document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-
-      toast({
-        title: "✅ Download started!",
-        description: "Your video is being saved.",
-      });
+      toast({ title: "✅ Download started!", description: "Your video is being saved." });
     } catch (error) {
       console.error("Download failed:", error);
       toast({
         title: "Download failed",
-        description: "Unable to save your video. Try again later.",
+        description: "Unable to save your video.",
         variant: "destructive",
       });
     } finally {
@@ -139,55 +107,66 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -30 }}
+      transition={{ duration: 0.6, ease: "easeInOut" }}
+      className="container mx-auto px-4 py-8 max-w-4xl"
+    >
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          {/* 🎥 Video or Image Preview */}
-          <div className="relative aspect-video bg-black">
-            {videoUrl ? (
-              <video
-                ref={videoRef}
-                src={videoUrl}
-                controls
-                className="w-full h-full"
-                controlsList="nodownload"
-              />
-            ) : scenes && scenes.length > 0 ? (
-              <>
-                <img
-                  src={scenes[currentSceneIndex]?.imageUrl || "/placeholder.svg"}
+          {/* 🎥 Animated Preview */}
+          <div className="relative aspect-video bg-black overflow-hidden">
+            <AnimatePresence mode="wait">
+              {videoUrl ? (
+                <motion.video
+                  key="final-video"
+                  ref={videoRef}
+                  src={videoUrl}
+                  controls
+                  className="w-full h-full"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5 }}
+                />
+              ) : hasScenes ? (
+                <motion.img
+                  key={currentSceneIndex}
+                  src={currentScene?.imageUrl || "/placeholder.svg"}
                   alt={`Scene ${currentSceneIndex + 1}`}
                   className="w-full h-full object-cover"
+                  initial={{ opacity: 0, scale: 1.05 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.6 }}
                 />
-                <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
-                  Scene {currentSceneIndex + 1} of {scenes.length}
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
-                  <div
-                    className="h-full bg-primary transition-all duration-300"
-                    style={{ width: `${audioProgress}%` }}
-                  />
-                </div>
-              </>
-            ) : images && images.length > 0 ? (
-              <img
-                src={images[0]}
-                alt="Generated preview"
-                className="w-full h-full object-cover"
-              />
-            ) : null}
+              ) : images && images.length > 0 ? (
+                <motion.img
+                  key="preview-image"
+                  src={images[0]}
+                  alt="Generated preview"
+                  className="w-full h-full object-cover"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                />
+              ) : null}
+            </AnimatePresence>
+
+            {/* Scene indicator */}
+            {hasScenes && !videoUrl && (
+              <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
+                Scene {currentSceneIndex + 1} / {scenes.length}
+              </div>
+            )}
           </div>
 
-          {/* 🎚️ Scene Playback Controls */}
-          {!videoUrl && scenes && scenes.length > 0 && (
+          {/* 🎚️ Scene Controls */}
+          {!videoUrl && hasScenes && (
             <div className="p-4 border-t border-border">
               <div className="flex items-center justify-center gap-4">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={previousScene}
-                  disabled={currentSceneIndex === 0}
-                >
+                <Button variant="outline" size="icon" onClick={previousScene} disabled={currentSceneIndex === 0}>
                   <SkipBack className="h-4 w-4" />
                 </Button>
 
@@ -195,12 +174,7 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
                   {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-1" />}
                 </Button>
 
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={nextScene}
-                  disabled={currentSceneIndex === scenes.length - 1}
-                >
+                <Button variant="outline" size="icon" onClick={nextScene} disabled={currentSceneIndex === scenes.length - 1}>
                   <SkipForward className="h-4 w-4" />
                 </Button>
               </div>
@@ -216,20 +190,14 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
               </Button>
 
               {videoUrl && (
-                <Button
-                  onClick={handleDownload}
-                  className="flex-1"
-                  disabled={isDownloading}
-                >
+                <Button onClick={handleDownload} className="flex-1" disabled={isDownloading}>
                   {isDownloading ? (
                     <>
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                      Downloading...
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Downloading...
                     </>
                   ) : (
                     <>
-                      <Download className="mr-2 h-4 w-4" />
-                      Download MP4
+                      <Download className="mr-2 h-4 w-4" /> Download MP4
                     </>
                   )}
                 </Button>
@@ -237,13 +205,11 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
             </div>
 
             <div className="text-center text-sm text-muted-foreground">
-              {videoUrl
-                ? "🎉 Video ready — download your masterpiece!"
-                : "⚙️ Generating your AI video..."}
+              {videoUrl ? "🎉 Video ready — download your masterpiece!" : "⚙️ Generating your AI video..."}
             </div>
           </div>
         </CardContent>
       </Card>
-    </div>
+    </motion.div>
   );
 };
