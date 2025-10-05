@@ -32,8 +32,8 @@ serve(async (req) => {
       documentary: 'Create an educational documentary script with informative visuals and authoritative narration.'
     };
 
-    // Calculate optimal number of scenes (5-8 seconds per scene works best for TTS)
-    const numberOfScenes = Math.max(3, Math.min(8, Math.ceil(duration / 7)));
+    // Calculate number of scenes based on duration (no artificial restrictions)
+    const numberOfScenes = Math.max(3, Math.ceil(duration / 6)); // ~6 seconds per scene average
     const sceneDuration = Math.floor(duration / numberOfScenes);
     const lastSceneDuration = duration - (sceneDuration * (numberOfScenes - 1)); // Adjust last scene for exact total
     

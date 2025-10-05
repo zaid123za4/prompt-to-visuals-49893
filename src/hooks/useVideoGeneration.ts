@@ -24,6 +24,8 @@ export const useVideoGeneration = () => {
   const [currentStep, setCurrentStep] = useState("");
   const [script, setScript] = useState<VideoScript | null>(null);
   const [generatedScenes, setGeneratedScenes] = useState<Scene[]>([]);
+  const [videoUrl, setVideoUrl] = useState<string>("");
+  const [projectId, setProjectId] = useState<string>("");
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -32,6 +34,8 @@ export const useVideoGeneration = () => {
     setProgress(0);
     setScript(null);
     setGeneratedScenes([]);
+    setVideoUrl("");
+    setProjectId("");
 
     try {
       // Check user credits
@@ -123,21 +127,21 @@ export const useVideoGeneration = () => {
       setGeneratedScenes(scenesWithMedia);
       setProgress(90);
 
-      // Step 3: Stitch video
+      // Step 3: Create final video
       setCurrentStep("Creating final video...");
       setProgress(90);
 
       const { data: project, error: projectError } = await supabase
         .from('projects')
-        .insert({
+        .insert([{
           user_id: user.id,
           title: scriptData.title,
           prompt,
           style: style as any,
           script: scriptData,
-          status: 'completed',
+          status: 'generating',
           duration: scriptData.scenes.reduce((sum: number, s: Scene) => sum + s.duration, 0)
-        })
+        }])
         .select()
         .single();
 
@@ -156,14 +160,17 @@ export const useVideoGeneration = () => {
 
       await supabase.from('scenes').insert(scenesData);
 
-      // Stitch video
-      const { data: videoData, error: videoError } = await supabase.functions.invoke('stitch-video', {
+      // Create final merged video using FFmpeg-based service
+      setCurrentStep("Merging video with FFmpeg...");
+      setProgress(95);
+
+      const { data: videoData, error: videoError } = await supabase.functions.invoke('create-video', {
         body: { projectId: project.id }
       });
 
       if (videoError) {
-        console.error('Video stitching warning:', videoError);
-        // Continue anyway, video can be played scene-by-scene
+        console.error('Video creation error:', videoError);
+        throw new Error('Failed to create final video');
       }
 
       // Deduct credits
@@ -175,6 +182,8 @@ export const useVideoGeneration = () => {
       // Step 4: Complete
       setCurrentStep("Complete!");
       setProgress(100);
+      setVideoUrl(videoData.videoUrl);
+      setProjectId(project.id);
 
       toast({
         title: "Video generated!",
@@ -184,7 +193,8 @@ export const useVideoGeneration = () => {
       return {
         script: scriptData,
         scenes: scenesWithMedia,
-        projectId: project.id
+        projectId: project.id,
+        videoUrl: videoData.videoUrl
       };
 
     } catch (error: any) {
@@ -216,6 +226,8 @@ export const useVideoGeneration = () => {
     currentStep,
     script,
     generatedScenes,
+    videoUrl,
+    projectId,
     generateVideo
   };
 };

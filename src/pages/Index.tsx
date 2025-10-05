@@ -13,7 +13,7 @@ import type { VideoDuration } from "@/components/DurationSelector";
 const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
-  const { isGenerating, progress, currentStep, script, generatedScenes, generateVideo } = useVideoGeneration();
+  const { isGenerating, progress, currentStep, script, generatedScenes, generateVideo, videoUrl, projectId } = useVideoGeneration();
 
   useEffect(() => {
     // Check authentication
@@ -62,11 +62,13 @@ const Index = () => {
       
       {isGenerating && progress > 0 && <ProgressIndicator steps={steps} />}
       
-      {!isGenerating && generatedScenes.length > 0 && (
+      {!isGenerating && (generatedScenes.length > 0 || videoUrl) && (
         <VideoPreview 
+          videoUrl={videoUrl}
           scenes={generatedScenes}
           images={generatedScenes.filter(s => s.imageUrl).map(s => s.imageUrl!)}
-          onReset={handleReset} 
+          onReset={handleReset}
+          projectId={projectId}
         />
       )}
     </div>
