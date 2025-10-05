@@ -52,42 +52,57 @@ serve(async (req) => {
 
     console.log(`Found ${scenes.length} scenes to merge`);
 
-    // Build Shotstack timeline
-    const clips = scenes.map((scene: any) => {
+    // Build Shotstack timeline with proper sequential timing
+    let currentTime = 0;
+    const videoClips = scenes.map((scene: any) => {
       const clip: any = {
         asset: {
           type: 'image',
           src: scene.image_url
         },
-        start: 0,
+        start: currentTime,
         length: scene.duration || 5
       };
-
-      // Add audio if available
-      if (scene.audio_url) {
-        clip.effect = {
-          type: 'audio',
-          src: scene.audio_url
-        };
-      }
-
+      currentTime += scene.duration || 5;
       return clip;
     });
 
-    // Create Shotstack edit request
+    // Build audio track separately
+    currentTime = 0;
+    const audioClips = scenes
+      .filter((scene: any) => scene.audio_url)
+      .map((scene: any) => ({
+        asset: {
+          type: 'audio',
+          src: scene.audio_url
+        },
+        start: currentTime,
+        length: scene.duration || 5
+      }));
+
+    // Create Shotstack edit request with separate video and audio tracks
+    const tracks: any[] = [
+      {
+        clips: videoClips
+      }
+    ];
+
+    // Add audio track if we have audio clips
+    if (audioClips.length > 0) {
+      tracks.push({
+        clips: audioClips
+      });
+    }
+
     const edit = {
       timeline: {
         background: '#000000',
-        tracks: [
-          {
-            clips: clips
-          }
-        ]
+        tracks
       },
       output: {
         format: 'mp4',
         resolution: 'sd',
-        fps: 30
+        fps: 25
       }
     };
 
