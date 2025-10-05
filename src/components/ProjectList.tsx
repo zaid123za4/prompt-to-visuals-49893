@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "./ui/button";
-import { Loader2, Play, Trash2, Clock } from "lucide-react";
+import { Loader2, Play, Trash2, Clock, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "./ui/badge";
 
@@ -16,6 +16,7 @@ interface Project {
   thumbnail_url?: string;
   created_at: string;
   scenes?: { count: number }[];
+  video_url?: string;
 }
 
 export const ProjectList = () => {
@@ -78,6 +79,40 @@ export const ProjectList = () => {
     }
   };
 
+  const handleProjectDownload = async (videoUrl: string | undefined, projectId: string) => {
+    if (!videoUrl) {
+      toast({
+        title: "No video available",
+        description: "This project doesn't have a generated video yet.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(videoUrl);
+      if (!response.ok) throw new Error("Failed to fetch video");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `project-${projectId}.mp4`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast({
+        title: "Download started",
+        description: "Your video is being saved.",
+      });
+    } catch (error: any) {
+      console.error("Download failed:", error);
+      toast({
+        title: "Download failed",
+        description: error.message || "Unable to download the video.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -116,6 +151,15 @@ export const ProjectList = () => {
               <Button size="sm" variant="outline" className="flex-1">
                 <Play className="w-4 h-4 mr-2" />
                 View
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="flex-1" 
+                onClick={() => handleProjectDownload(project.video_url, project.id)}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download
               </Button>
               <Button
                 size="sm"
