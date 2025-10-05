@@ -18,6 +18,7 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
   const [audioProgress, setAudioProgress] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const { toast } = useToast();
@@ -25,7 +26,7 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
   const hasScenes = scenes && scenes.length > 0;
   const currentScene = hasScenes ? scenes[currentSceneIndex] : null;
 
-  // Handle audio playback for scenes (only if no final video)
+  // 🎧 Handle audio playback (for scene preview mode)
   useEffect(() => {
     if (videoUrl || !hasScenes || !currentScene?.audioUrl) return;
 
@@ -37,7 +38,7 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
     if (isPlaying) {
       const audio = new Audio(currentScene.audioUrl);
       audioRef.current = audio;
-      
+
       audio.onended = () => {
         if (currentSceneIndex < scenes.length - 1) {
           setCurrentSceneIndex(prev => prev + 1);
@@ -56,7 +57,7 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
       };
 
       audio.play().catch(err => {
-        console.error('Audio playback error:', err);
+        console.error("Audio playback error:", err);
         toast({
           title: "Playback error",
           description: "Failed to play audio",
@@ -74,6 +75,7 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
     }
   }, [isPlaying, currentSceneIndex, hasScenes, currentScene, scenes, toast, videoUrl]);
 
+  // ▶️ Toggle scene playback
   const togglePlayback = () => {
     setIsPlaying(!isPlaying);
     if (!isPlaying) {
@@ -97,20 +99,42 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
     }
   };
 
+  // 💾 Handle video download (Blob-safe + toast feedback)
   const handleDownload = async () => {
-    if (videoUrl) {
-      // Download the final merged video
-      try {
-        const a = document.createElement('a');
-        a.href = videoUrl;
-        a.download = `video-${projectId || Date.now()}.mp4`;
-        a.target = '_blank';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      } catch (error) {
-        console.error('Failed to download video:', error);
-      }
+    if (!videoUrl) return;
+
+    try {
+      setIsDownloading(true);
+      toast({
+        title: "Preparing download...",
+        description: "Your video is being fetched...",
+      });
+
+      const response = await fetch(videoUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `video-${projectId || Date.now()}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "✅ Download started!",
+        description: "Your video is being saved.",
+      });
+    } catch (error) {
+      console.error("Download failed:", error);
+      toast({
+        title: "Download failed",
+        description: "Unable to save your video. Try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -118,10 +142,9 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          {/* Video/Image Preview Area */}
+          {/* 🎥 Video or Image Preview */}
           <div className="relative aspect-video bg-black">
             {videoUrl ? (
-              // Display final merged video
               <video
                 ref={videoRef}
                 src={videoUrl}
@@ -136,13 +159,11 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
                   alt={`Scene ${currentSceneIndex + 1}`}
                   className="w-full h-full object-cover"
                 />
-                {/* Scene Counter */}
                 <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
                   Scene {currentSceneIndex + 1} of {scenes.length}
                 </div>
-                {/* Progress Bar */}
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20">
-                  <div 
+                  <div
                     className="h-full bg-primary transition-all duration-300"
                     style={{ width: `${audioProgress}%` }}
                   />
@@ -157,7 +178,7 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
             ) : null}
           </div>
 
-          {/* Playback Controls - Only show for scene-based playback (not for final video) */}
+          {/* 🎚️ Scene Playback Controls */}
           {!videoUrl && scenes && scenes.length > 0 && (
             <div className="p-4 border-t border-border">
               <div className="flex items-center justify-center gap-4">
@@ -169,19 +190,11 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
                 >
                   <SkipBack className="h-4 w-4" />
                 </Button>
-                
-                <Button
-                  size="icon"
-                  onClick={togglePlayback}
-                  className="h-12 w-12"
-                >
-                  {isPlaying ? (
-                    <Pause className="h-6 w-6" />
-                  ) : (
-                    <Play className="h-6 w-6 ml-1" />
-                  )}
+
+                <Button size="icon" onClick={togglePlayback} className="h-12 w-12">
+                  {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-1" />}
                 </Button>
-                
+
                 <Button
                   variant="outline"
                   size="icon"
@@ -194,23 +207,39 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
             </div>
           )}
 
-          {/* Action Buttons */}
+          {/* ⚙️ Action Buttons */}
           <div className="p-6 border-t border-border space-y-4">
             <div className="flex gap-4">
               <Button onClick={onReset} className="flex-1" variant="outline">
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Create New
               </Button>
+
               {videoUrl && (
-                <Button onClick={handleDownload} className="flex-1">
-                  <Download className="mr-2 h-4 w-4" />
-                  Download MP4
+                <Button
+                  onClick={handleDownload}
+                  className="flex-1"
+                  disabled={isDownloading}
+                >
+                  {isDownloading ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-4 w-4" />
+                      Download MP4
+                    </>
+                  )}
                 </Button>
               )}
             </div>
-            
+
             <div className="text-center text-sm text-muted-foreground">
-              ✨ Your AI-generated video is ready!
+              {videoUrl
+                ? "🎉 Video ready — download your masterpiece!"
+                : "⚙️ Generating your AI video..."}
             </div>
           </div>
         </CardContent>
