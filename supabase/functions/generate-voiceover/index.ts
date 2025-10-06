@@ -15,24 +15,13 @@ serve(async (req) => {
   try {
     const { text } = await req.json();
 
-    if (!text) {
-      throw new Error("Text is required");
-    }
+    if (!text) throw new Error("Text is required");
 
-    // ✅ Dynamically estimate audio length based on text size
-    const expectedDuration = Math.ceil(text.length / 14);
-
-    console.log(
-      "Processing voiceover request for text:",
-      text.substring(0, 50) + "..."
-    );
+    console.log("Generating full voiceover for text:", text.slice(0, 60) + "...");
 
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    if (!GROQ_API_KEY) {
-      throw new Error("GROQ_API_KEY is not configured");
-    }
+    if (!GROQ_API_KEY) throw new Error("Missing GROQ_API_KEY");
 
-    // 🎙️ Generate speech using Groq PlayAI TTS
     const response = await fetch("https://api.groq.com/openai/v1/audio/speech", {
       method: "POST",
       headers: {
@@ -47,39 +36,43 @@ serve(async (req) => {
       }),
     });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("Groq TTS error:", errText);
-      throw new Error(`Failed to generate speech: ${errText}`);
+    if (!response.ok || !response.body) {
+      const err = await response.text();
+      throw new Error("TTS generation failed: " + err);
     }
 
-    const audioBuffer = await response.arrayBuffer();
+    // ✅ Properly read streamed data to avoid 5s cutoff
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) chunks.push(value);
+    }
 
-    // Upload to Supabase storage
+    const audioBuffer = await new Blob(chunks).arrayBuffer();
+
+    // Upload to Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const fileName = `audio-${Date.now()}.wav`;
-
     const { error: uploadError } = await supabase.storage
       .from("audio")
       .upload(fileName, audioBuffer, { contentType: "audio/wav" });
 
-    if (uploadError) {
-      throw new Error(`Failed to upload audio: ${uploadError.message}`);
-    }
+    if (uploadError) throw new Error(`Failed to upload: ${uploadError.message}`);
 
     const {
       data: { publicUrl },
     } = supabase.storage.from("audio").getPublicUrl(fileName);
 
-    console.log("✅ Voiceover generated successfully:", publicUrl);
+    console.log("✅ Full voiceover ready:", publicUrl);
 
     return new Response(
       JSON.stringify({
         audioUrl: publicUrl,
-        duration: expectedDuration,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
