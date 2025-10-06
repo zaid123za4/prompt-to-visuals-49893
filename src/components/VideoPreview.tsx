@@ -84,21 +84,35 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
     if (!videoUrl) return;
     try {
       setIsDownloading(true);
-      toast({ title: "Preparing download...", description: "Your video is being fetched..." });
-      const response = await fetch(videoUrl);
+      toast({ title: "Preparing download...", description: "Fetching your video..." });
+      
+      const response = await fetch(videoUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'video/mp4',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch video: ${response.status}`);
+      }
+      
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `video-${projectId || Date.now()}.mp4`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      toast({ title: "✅ Download started!", description: "Your video is being saved." });
+      
+      toast({ title: "✅ Download complete!", description: "Your video has been saved." });
     } catch (error) {
       console.error("Download failed:", error);
       toast({
         title: "Download failed",
-        description: "Unable to save your video.",
+        description: error instanceof Error ? error.message : "Unable to save your video.",
         variant: "destructive",
       });
     } finally {
