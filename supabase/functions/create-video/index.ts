@@ -54,7 +54,7 @@ serve(async (req) => {
 
     // Build Shotstack timeline with proper sequential timing
     let currentTime = 0;
-    const videoClips = scenes.map((scene: any) => {
+    const videoClips = scenes.map((scene: any, index: number) => {
       const clip: any = {
         asset: {
           type: 'image',
@@ -64,21 +64,29 @@ serve(async (req) => {
         length: scene.duration || 5
       };
       currentTime += scene.duration || 5;
+      
+      console.log(`Scene ${index + 1} image URL length:`, scene.image_url?.length || 0);
       return clip;
     });
 
-    // Build audio track separately
+    // Build audio track separately with proper timing
     currentTime = 0;
     const audioClips = scenes
       .filter((scene: any) => scene.audio_url)
-      .map((scene: any) => ({
-        asset: {
-          type: 'audio',
-          src: scene.audio_url
-        },
-        start: currentTime,
-        length: scene.duration || 5
-      }));
+      .map((scene: any, index: number) => {
+        const audioClip = {
+          asset: {
+            type: 'audio',
+            src: scene.audio_url
+          },
+          start: currentTime,
+          length: scene.duration || 5
+        };
+        currentTime += scene.duration || 5;
+        
+        console.log(`Scene ${index + 1} audio URL length:`, scene.audio_url?.length || 0);
+        return audioClip;
+      });
 
     // Create Shotstack edit request with separate video and audio tracks
     const tracks: any[] = [
