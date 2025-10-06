@@ -23,3 +23,12 @@ verify_jwt = false
 
 [functions.stitch-video]
 verify_jwt = false
+
+[functions.create-video]
+verify_jwt = false
+
+[functions.create-api-key]
+verify_jwt = true
+
+[functions.generate-video-api]
+verify_jwt = false

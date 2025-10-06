@@ -29,7 +29,7 @@ export const useVideoGeneration = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const generateVideo = async (prompt: string, style: string, duration: number) => {
+  const generateVideo = async (prompt: string, style: string, duration: number, aspectRatio: string = "16:9") => {
     setIsGenerating(true);
     setProgress(0);
     setScript(null);
@@ -140,7 +140,8 @@ export const useVideoGeneration = () => {
           style: style as any,
           script: scriptData,
           status: 'generating',
-          duration: scriptData.scenes.reduce((sum: number, s: Scene) => sum + s.duration, 0)
+          duration: scriptData.scenes.reduce((sum: number, s: Scene) => sum + s.duration, 0),
+          aspect_ratio: aspectRatio
         }])
         .select()
         .single();
@@ -155,7 +156,8 @@ export const useVideoGeneration = () => {
         image_url: scene.imageUrl,
         audio_url: scene.audioUrl,
         duration: scene.duration,
-        status: scene.status as any
+        status: scene.status as any,
+        aspect_ratio: aspectRatio
       }));
 
       await supabase.from('scenes').insert(scenesData);

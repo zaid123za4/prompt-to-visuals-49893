@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useVideoGeneration } from "@/hooks/useVideoGeneration";
 import type { VideoStyle } from "@/components/StyleSelector";
 import type { VideoDuration } from "@/components/DurationSelector";
+import type { AspectRatio } from "@/components/AspectRatioSelector";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -28,14 +29,14 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleGenerate = async (prompt: string, style: VideoStyle, duration: VideoDuration) => {
+  const handleGenerate = async (prompt: string, style: VideoStyle, duration: VideoDuration, aspectRatio: AspectRatio) => {
     if (!user) {
       navigate("/auth");
       return;
     }
 
     try {
-      await generateVideo(prompt, style, duration);
+      await generateVideo(prompt, style, duration, aspectRatio);
     } catch (error) {
       console.error('Generation failed:', error);
     }

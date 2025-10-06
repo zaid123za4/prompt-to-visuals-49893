@@ -4,9 +4,10 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { StyleSelector, VideoStyle } from "./StyleSelector";
 import { DurationSelector, VideoDuration } from "./DurationSelector";
+import { AspectRatioSelector, AspectRatio } from "./AspectRatioSelector";
 
 interface PromptInputProps {
-  onGenerate: (prompt: string, style: VideoStyle, duration: VideoDuration) => void;
+  onGenerate: (prompt: string, style: VideoStyle, duration: VideoDuration, aspectRatio: AspectRatio) => void;
   isGenerating: boolean;
 }
 
@@ -14,11 +15,12 @@ export const PromptInput = ({ onGenerate, isGenerating }: PromptInputProps) => {
   const [prompt, setPrompt] = useState("");
   const [selectedStyle, setSelectedStyle] = useState<VideoStyle>("cinematic");
   const [selectedDuration, setSelectedDuration] = useState<VideoDuration>(30);
+  const [selectedRatio, setSelectedRatio] = useState<AspectRatio>("16:9");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (prompt.trim() && !isGenerating) {
-      onGenerate(prompt, selectedStyle, selectedDuration);
+      onGenerate(prompt, selectedStyle, selectedDuration, selectedRatio);
     }
   };
 
@@ -43,6 +45,11 @@ export const PromptInput = ({ onGenerate, isGenerating }: PromptInputProps) => {
         <DurationSelector
           selectedDuration={selectedDuration}
           onDurationChange={setSelectedDuration}
+        />
+
+        <AspectRatioSelector
+          selectedRatio={selectedRatio}
+          onRatioChange={setSelectedRatio}
         />
 
         <Button

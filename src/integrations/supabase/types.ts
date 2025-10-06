@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_keys: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          key_hash: string
+          key_preview: string
+          last_used_at: string | null
+          name: string
+          usage_count: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          key_hash: string
+          key_preview: string
+          last_used_at?: string | null
+          name: string
+          usage_count?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          key_hash?: string
+          key_preview?: string
+          last_used_at?: string | null
+          name?: string
+          usage_count?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -55,6 +91,7 @@ export type Database = {
       }
       projects: {
         Row: {
+          aspect_ratio: string | null
           created_at: string | null
           duration: number | null
           id: string
@@ -70,6 +107,7 @@ export type Database = {
           video_url: string | null
         }
         Insert: {
+          aspect_ratio?: string | null
           created_at?: string | null
           duration?: number | null
           id?: string
@@ -85,6 +123,7 @@ export type Database = {
           video_url?: string | null
         }
         Update: {
+          aspect_ratio?: string | null
           created_at?: string | null
           duration?: number | null
           id?: string
@@ -103,6 +142,7 @@ export type Database = {
       }
       scenes: {
         Row: {
+          aspect_ratio: string | null
           audio_url: string | null
           created_at: string | null
           description: string
@@ -117,6 +157,7 @@ export type Database = {
           voiceover_url: string | null
         }
         Insert: {
+          aspect_ratio?: string | null
           audio_url?: string | null
           created_at?: string | null
           description: string
@@ -131,6 +172,7 @@ export type Database = {
           voiceover_url?: string | null
         }
         Update: {
+          aspect_ratio?: string | null
           audio_url?: string | null
           created_at?: string | null
           description?: string
