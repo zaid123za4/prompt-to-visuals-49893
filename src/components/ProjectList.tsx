@@ -90,26 +90,31 @@ export const ProjectList = () => {
     }
 
     try {
-      const response = await fetch(videoUrl);
+      const response = await fetch(videoUrl, {
+        mode: 'cors',
+      });
       if (!response.ok) throw new Error("Failed to fetch video");
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `project-${projectId}.mp4`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       toast({
-        title: "Download started",
-        description: "Your video is being saved.",
+        title: "Download complete",
+        description: "Your video has been saved.",
       });
     } catch (error: any) {
       console.error("Download failed:", error);
+      // Fallback: open in new tab if CORS blocks download
       toast({
-        title: "Download failed",
-        description: error.message || "Unable to download the video.",
-        variant: "destructive",
+        title: "Opening video",
+        description: "Click 'Save As' to download the video.",
       });
+      window.open(videoUrl, '_blank');
     }
   };
 
