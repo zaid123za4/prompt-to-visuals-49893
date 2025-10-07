@@ -111,7 +111,7 @@ serve(async (req) => {
       },
       output: {
         format: 'mp4',
-        resolution: 'sd',
+        resolution: 'hd',
         aspectRatio: '9:16',
         fps: 25
       }
