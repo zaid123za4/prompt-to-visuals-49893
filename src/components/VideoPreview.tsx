@@ -86,9 +86,11 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
       setIsDownloading(true);
       toast({ title: "Preparing download...", description: "Fetching your video..." });
       
-      // Try direct download first (works for same-origin or CORS-enabled URLs)
       const response = await fetch(videoUrl, {
-        mode: 'cors',
+        method: 'GET',
+        headers: {
+          'Accept': 'video/mp4',
+        },
       });
       
       if (!response.ok) {
@@ -108,12 +110,11 @@ export const VideoPreview = ({ videoUrl, scenes, images, onReset, projectId }: V
       toast({ title: "✅ Download complete!", description: "Your video has been saved." });
     } catch (error) {
       console.error("Download failed:", error);
-      // Fallback: open in new tab if CORS blocks download
       toast({
-        title: "Opening video",
-        description: "Click 'Save As' to download the video.",
+        title: "Download failed",
+        description: error instanceof Error ? error.message : "Unable to save your video.",
+        variant: "destructive",
       });
-      window.open(videoUrl, '_blank');
     } finally {
       setIsDownloading(false);
     }
