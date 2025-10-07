@@ -44,13 +44,29 @@ serve(async (req) => {
     // ✅ Properly read streamed data to avoid 5s cutoff
     const reader = response.body.getReader();
     const chunks: Uint8Array[] = [];
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (value) chunks.push(value);
+    
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) chunks.push(value);
+      }
+    } catch (readError) {
+      console.error("Error reading audio stream:", readError);
+      throw new Error("Failed to read audio stream");
     }
 
-    const audioBuffer = await new Blob(chunks).arrayBuffer();
+    // Combine all chunks into a single array buffer
+    const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+    const combinedArray = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      combinedArray.set(chunk, offset);
+      offset += chunk.length;
+    }
+    
+    console.log(`✅ Read ${chunks.length} chunks, total size: ${totalLength} bytes`);
+    const audioBuffer = combinedArray.buffer;
 
     // Upload to Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -78,8 +94,9 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Error in generate-voiceover:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: error.message || "Unknown error" }),
+      JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
