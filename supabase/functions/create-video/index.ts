@@ -58,7 +58,9 @@ serve(async (req) => {
       const clip: any = {
         asset: {
           type: 'image',
-          src: scene.image_url
+          src: scene.image_url,
+          fit: 'cover'
+          
         },
         start: currentTime,
         length: scene.duration || 5
