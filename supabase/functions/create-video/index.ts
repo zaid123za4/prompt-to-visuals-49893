@@ -51,7 +51,6 @@ serve(async (req) => {
     }
 
     console.log(`Found ${scenes.length} scenes to merge`);
-    console.log(`Project aspect ratio: ${project.aspect_ratio}`);
 
     // Build Shotstack timeline with proper sequential timing
     let currentTime = 0;
@@ -103,33 +102,6 @@ serve(async (req) => {
       });
     }
 
-    // Map aspect ratio to dimensions
-    const aspectRatio = project.aspect_ratio || '16:9';
-    let width = 1280;
-    let height = 720;
-    
-    switch (aspectRatio) {
-      case '9:16': // Portrait (YouTube Shorts, TikTok)
-        width = 720;
-        height = 1280;
-        break;
-      case '1:1': // Square (Instagram)
-        width = 1080;
-        height = 1080;
-        break;
-      case '4:3': // Classic TV
-        width = 1024;
-        height = 768;
-        break;
-      case '16:9': // Landscape (YouTube)
-      default:
-        width = 1280;
-        height = 720;
-        break;
-    }
-    
-    console.log(`Using dimensions: ${width}x${height} for aspect ratio ${aspectRatio}`);
-
     const edit = {
       timeline: {
         background: '#000000',
@@ -137,8 +109,7 @@ serve(async (req) => {
       },
       output: {
         format: 'mp4',
-        width,
-        height,
+        resolution: 'sd',
         fps: 25
       }
     };
