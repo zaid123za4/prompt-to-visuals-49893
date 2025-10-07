@@ -58,9 +58,7 @@ serve(async (req) => {
       const clip: any = {
         asset: {
           type: 'image',
-          src: scene.image_url,
-          fit: 'cover'
-          
+          src: scene.image_url
         },
         start: currentTime,
         length: scene.duration || 5
@@ -111,7 +109,7 @@ serve(async (req) => {
       },
       output: {
         format: 'mp4',
-        resolution: 'hd',
+        resolution: 'sd',
         aspectRatio: '9:16',
         fps: 25
       }
