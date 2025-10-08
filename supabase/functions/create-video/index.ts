@@ -52,6 +52,19 @@ serve(async (req) => {
 
     console.log(`Found ${scenes.length} scenes to merge`);
 
+    // Map aspect ratio to dimensions for Shotstack
+    const aspectRatioDimensions: Record<string, { width: number; height: number }> = {
+      '16:9': { width: 1280, height: 720 },
+      '9:16': { width: 720, height: 1280 },
+      '1:1': { width: 1080, height: 1080 },
+      '4:3': { width: 1024, height: 768 }
+    };
+
+    const aspectRatio = project.aspect_ratio || '16:9';
+    const dimensions = aspectRatioDimensions[aspectRatio] || aspectRatioDimensions['16:9'];
+    
+    console.log(`Using aspect ratio: ${aspectRatio}, dimensions: ${dimensions.width}x${dimensions.height}`);
+
     // Build Shotstack timeline with proper sequential timing
     let currentTime = 0;
     const videoClips = scenes.map((scene: any, index: number) => {
@@ -109,7 +122,8 @@ serve(async (req) => {
       },
       output: {
         format: 'mp4',
-        resolution: 'sd',
+        width: dimensions.width,
+        height: dimensions.height,
         fps: 25
       }
     };
