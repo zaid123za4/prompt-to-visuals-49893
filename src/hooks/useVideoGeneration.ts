@@ -85,7 +85,8 @@ export const useVideoGeneration = () => {
           const { data: imageData, error: imageError } = await supabase.functions.invoke('generate-image', {
             body: { 
               description: scene.description,
-              style 
+              style,
+              aspectRatio
             }
           });
 

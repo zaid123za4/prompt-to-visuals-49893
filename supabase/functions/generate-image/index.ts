@@ -13,11 +13,22 @@ serve(async (req) => {
   }
 
   try {
-    const { description, style } = await req.json();
+    const { description, style, aspectRatio = '16:9' } = await req.json();
 
     if (!description) {
       throw new Error('Description is required');
     }
+
+    // Map aspect ratio to dimensions
+    const aspectRatioDimensions: Record<string, { width: number; height: number }> = {
+      '16:9': { width: 1280, height: 720 },
+      '9:16': { width: 720, height: 1280 },
+      '1:1': { width: 1080, height: 1080 },
+      '4:3': { width: 1024, height: 768 }
+    };
+
+    const dimensions = aspectRatioDimensions[aspectRatio] || aspectRatioDimensions['16:9'];
+    const dimensionPrompt = `${dimensions.width}x${dimensions.height} aspect ratio`;
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -34,9 +45,10 @@ serve(async (req) => {
       documentary: 'documentary photography, natural setting, authentic moment, National Geographic style'
     };
 
-    const enhancedPrompt = `${description}, ${styleEnhancements[style as keyof typeof styleEnhancements] || styleEnhancements.realistic}, 4K, high quality, detailed`;
+    const enhancedPrompt = `${description}, ${styleEnhancements[style as keyof typeof styleEnhancements] || styleEnhancements.realistic}, ${dimensionPrompt}, 4K, high quality, detailed`;
 
     console.log('Generating image with prompt:', enhancedPrompt);
+    console.log('Target dimensions:', dimensions);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
