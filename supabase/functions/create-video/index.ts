@@ -20,9 +20,9 @@ serve(async (req) => {
 
     console.log('Creating video for project:', projectId);
 
-    const SHOTSTACK_API_KEY = Deno.env.get('SHOTSTACK_API_KEY');
-    if (!SHOTSTACK_API_KEY) {
-      throw new Error('SHOTSTACK_API_KEY is not configured');
+    const CREATOMATE_API_KEY = Deno.env.get('CREATOMATE_API_KEY');
+    if (!CREATOMATE_API_KEY) {
+      throw new Error('CREATOMATE_API_KEY is not configured');
     }
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -64,134 +64,112 @@ serve(async (req) => {
     const dimensions = aspectRatioMap[project.aspect_ratio] || aspectRatioMap['16:9'];
     console.log('Using dimensions:', dimensions);
 
-    // Build Shotstack timeline with proper sequential timing
-    let currentTime = 0;
-    const videoClips = scenes.map((scene: any, index: number) => {
-      const clip: any = {
-        asset: {
+    // Build Creatomate compositions for each scene
+    const compositions = scenes.map((scene: any, index: number) => {
+      console.log(`Processing scene ${index + 1}:`, {
+        image_url: scene.image_url?.substring(0, 50) + '...',
+        audio_url: scene.audio_url?.substring(0, 50) + '...',
+        duration: scene.duration
+      });
+
+      const elements: any[] = [
+        {
           type: 'image',
-          src: scene.image_url
-        },
-        start: currentTime,
-        length: scene.duration || 5
+          source: scene.image_url,
+          duration: scene.duration || 5
+        }
+      ];
+
+      // Add audio if available
+      if (scene.audio_url) {
+        elements.push({
+          type: 'audio',
+          source: scene.audio_url,
+          duration: scene.duration || 5
+        });
+      }
+
+      return {
+        type: 'composition',
+        track: 1,
+        elements
       };
-      currentTime += scene.duration || 5;
-      
-      console.log(`Scene ${index + 1} image URL length:`, scene.image_url?.length || 0);
-      return clip;
     });
 
-    // Build audio track separately with proper timing
-    currentTime = 0;
-    const audioClips = scenes
-      .filter((scene: any) => scene.audio_url)
-      .map((scene: any, index: number) => {
-        const audioClip = {
-          asset: {
-            type: 'audio',
-            src: scene.audio_url
-          },
-          start: currentTime,
-          length: scene.duration || 5
-        };
-        currentTime += scene.duration || 5;
-        
-        console.log(`Scene ${index + 1} audio URL length:`, scene.audio_url?.length || 0);
-        return audioClip;
-      });
-
-    // Create Shotstack edit request with separate video and audio tracks
-    const tracks: any[] = [
-      {
-        clips: videoClips
-      }
-    ];
-
-    // Add audio track if we have audio clips
-    if (audioClips.length > 0) {
-      tracks.push({
-        clips: audioClips
-      });
-    }
-
-    const edit = {
-      timeline: {
-        background: '#000000',
-        tracks
-      },
-      output: {
-        format: 'mp4',
-        size: {
-          width: dimensions.width,
-          height: dimensions.height
-        },
-        fps: 25
-      }
+    // Create Creatomate render request
+    const renderRequest = {
+      output_format: 'mp4',
+      width: dimensions.width,
+      height: dimensions.height,
+      elements: compositions
     };
 
-    console.log('Sending render request to Shotstack...');
+    console.log('Sending render request to Creatomate...');
 
-    // Submit render to Shotstack
-    const renderResponse = await fetch('https://api.shotstack.io/edit/stage/render', {
+    // Submit render to Creatomate
+    const renderResponse = await fetch('https://api.creatomate.com/v2/renders', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': SHOTSTACK_API_KEY
+        'Authorization': `Bearer ${CREATOMATE_API_KEY}`
       },
-      body: JSON.stringify(edit)
+      body: JSON.stringify(renderRequest)
     });
 
     if (!renderResponse.ok) {
       const error = await renderResponse.text();
-      console.error('Shotstack render error:', error);
-      
-      // Check for credits issue
-      if (error.includes('credits') || error.includes('plan limits')) {
-        throw new Error('Shotstack account has insufficient credits. Please add credits at https://dashboard.shotstack.io/subscription');
-      }
-      
+      console.error('Creatomate render error:', error);
       throw new Error(`Failed to start video render: ${error}`);
     }
 
     const renderData = await renderResponse.json();
-    const renderId = renderData.response.id;
+    console.log('Render response:', renderData);
 
-    console.log('Render started with ID:', renderId);
-
-    // Poll for render completion
+    // Creatomate returns either a direct URL or a render ID we need to poll
     let videoUrl = null;
-    let attempts = 0;
-    const maxAttempts = 60; // 5 minutes max
 
-    while (!videoUrl && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+    if (renderData.url) {
+      // Direct URL available
+      videoUrl = renderData.url;
+      console.log('Video ready immediately:', videoUrl);
+    } else if (renderData.id) {
+      // Need to poll for completion
+      const renderId = renderData.id;
+      console.log('Polling for render completion, ID:', renderId);
 
-      const statusResponse = await fetch(`https://api.shotstack.io/edit/stage/render/${renderId}`, {
-        headers: {
-          'x-api-key': SHOTSTACK_API_KEY
+      let attempts = 0;
+      const maxAttempts = 60; // 5 minutes max
+
+      while (!videoUrl && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+
+        const statusResponse = await fetch(`https://api.creatomate.com/v2/renders/${renderId}`, {
+          headers: {
+            'Authorization': `Bearer ${CREATOMATE_API_KEY}`
+          }
+        });
+
+        if (!statusResponse.ok) {
+          throw new Error('Failed to check render status');
         }
-      });
 
-      if (!statusResponse.ok) {
-        throw new Error('Failed to check render status');
+        const statusData = await statusResponse.json();
+        console.log(`Render status: ${statusData.status}`);
+
+        if (statusData.status === 'succeeded' && statusData.url) {
+          videoUrl = statusData.url;
+        } else if (statusData.status === 'failed') {
+          throw new Error('Video render failed');
+        }
+
+        attempts++;
       }
 
-      const statusData = await statusResponse.json();
-      const status = statusData.response.status;
-
-      console.log(`Render status: ${status}`);
-
-      if (status === 'done') {
-        videoUrl = statusData.response.url;
-      } else if (status === 'failed') {
-        throw new Error('Video render failed');
+      if (!videoUrl) {
+        throw new Error('Video render timed out');
       }
-
-      attempts++;
-    }
-
-    if (!videoUrl) {
-      throw new Error('Video render timed out');
+    } else {
+      throw new Error('Unexpected response from Creatomate API');
     }
 
     console.log('Video created successfully:', videoUrl);
