@@ -13,11 +13,13 @@ serve(async (req) => {
   }
 
   try {
-    const { description, style } = await req.json();
+    const { description, style, aspectRatio = '16:9' } = await req.json();
 
     if (!description) {
       throw new Error('Description is required');
     }
+
+    console.log('Generating image with aspect ratio:', aspectRatio);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -34,7 +36,16 @@ serve(async (req) => {
       documentary: 'documentary photography, natural setting, authentic moment, National Geographic style'
     };
 
-    const enhancedPrompt = `${description}, ${styleEnhancements[style as keyof typeof styleEnhancements] || styleEnhancements.realistic}, 4K, high quality, detailed`;
+    // Add aspect ratio to prompt
+    const aspectRatioDescriptions: Record<string, string> = {
+      '9:16': 'vertical format 9:16 aspect ratio, portrait orientation, mobile-friendly',
+      '16:9': 'horizontal format 16:9 aspect ratio, landscape orientation',
+      '1:1': 'square format 1:1 aspect ratio',
+      '4:3': 'classic format 4:3 aspect ratio'
+    };
+
+    const aspectRatioDesc = aspectRatioDescriptions[aspectRatio] || aspectRatioDescriptions['16:9'];
+    const enhancedPrompt = `${description}, ${styleEnhancements[style as keyof typeof styleEnhancements] || styleEnhancements.realistic}, ${aspectRatioDesc}, 4K, high quality, detailed`;
 
     console.log('Generating image with prompt:', enhancedPrompt);
 

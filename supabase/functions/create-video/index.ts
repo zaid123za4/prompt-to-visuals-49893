@@ -51,6 +51,18 @@ serve(async (req) => {
     }
 
     console.log(`Found ${scenes.length} scenes to merge`);
+    console.log('Project aspect ratio:', project.aspect_ratio);
+
+    // Map aspect ratio to dimensions
+    const aspectRatioMap: Record<string, { width: number; height: number }> = {
+      '9:16': { width: 720, height: 1280 },  // YouTube Shorts/TikTok vertical
+      '16:9': { width: 1280, height: 720 },  // Standard horizontal
+      '1:1': { width: 1080, height: 1080 },  // Square
+      '4:3': { width: 1024, height: 768 }    // Classic
+    };
+
+    const dimensions = aspectRatioMap[project.aspect_ratio] || aspectRatioMap['16:9'];
+    console.log('Using dimensions:', dimensions);
 
     // Build Shotstack timeline with proper sequential timing
     let currentTime = 0;
@@ -109,7 +121,8 @@ serve(async (req) => {
       },
       output: {
         format: 'mp4',
-        resolution: 'sd',
+        width: dimensions.width,
+        height: dimensions.height,
         fps: 25
       }
     };
