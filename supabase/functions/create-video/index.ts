@@ -121,8 +121,10 @@ serve(async (req) => {
       },
       output: {
         format: 'mp4',
-        width: dimensions.width,
-        height: dimensions.height,
+        size: {
+          width: dimensions.width,
+          height: dimensions.height
+        },
         fps: 25
       }
     };
