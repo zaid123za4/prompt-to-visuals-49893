@@ -36,16 +36,18 @@ serve(async (req) => {
       documentary: 'documentary photography, natural setting, authentic moment, National Geographic style'
     };
 
-    // Add aspect ratio to prompt
+    // Add EXPLICIT aspect ratio instructions to prompt
     const aspectRatioDescriptions: Record<string, string> = {
-      '9:16': 'vertical format 9:16 aspect ratio, portrait orientation, mobile-friendly',
-      '16:9': 'horizontal format 16:9 aspect ratio, landscape orientation',
-      '1:1': 'square format 1:1 aspect ratio',
-      '4:3': 'classic format 4:3 aspect ratio'
+      '9:16': 'IMPORTANT: Create a VERTICAL image in 9:16 aspect ratio (portrait orientation). The image MUST be TALL and NARROW, optimized for mobile/vertical video format like TikTok, Instagram Reels, YouTube Shorts. Portrait orientation is MANDATORY. DO NOT create horizontal/landscape images.',
+      '16:9': 'horizontal format 16:9 aspect ratio, landscape orientation, widescreen',
+      '1:1': 'square format 1:1 aspect ratio, equal width and height',
+      '4:3': 'classic format 4:3 aspect ratio, standard display'
     };
 
     const aspectRatioDesc = aspectRatioDescriptions[aspectRatio] || aspectRatioDescriptions['16:9'];
-    const enhancedPrompt = `${description}, ${styleEnhancements[style as keyof typeof styleEnhancements] || styleEnhancements.realistic}, ${aspectRatioDesc}, 4K, high quality, detailed`;
+    const enhancedPrompt = `${aspectRatioDesc}\n\nScene description: ${description}\n\nStyle: ${styleEnhancements[style as keyof typeof styleEnhancements] || styleEnhancements.realistic}\n\nQuality: 4K, high quality, detailed`;
+    
+    console.log('Enhanced prompt with explicit aspect ratio:', enhancedPrompt);
 
     console.log('Generating image with prompt:', enhancedPrompt);
 
