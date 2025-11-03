@@ -97,8 +97,52 @@ serve(async (req) => {
       throw new Error('No image generated');
     }
 
+    // For 9:16, use image editing to enforce aspect ratio
+    let finalBase64Image = base64Image;
+    if (aspectRatio === '9:16') {
+      console.log('Applying 9:16 crop to ensure portrait orientation...');
+      
+      const cropResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash-image-preview',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: 'CRITICAL: Crop this image to EXACT 9:16 portrait aspect ratio (vertical/tall). Make it 720x1280 pixels. The image MUST be VERTICAL and TALL. Remove any horizontal/landscape content. Focus on the center and make it portrait orientation.'
+                },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: base64Image
+                  }
+                }
+              ]
+            }
+          ],
+          modalities: ['image', 'text']
+        }),
+      });
+
+      if (cropResponse.ok) {
+        const cropData = await cropResponse.json();
+        const croppedImage = cropData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+        if (croppedImage) {
+          finalBase64Image = croppedImage;
+          console.log('Successfully cropped to 9:16');
+        }
+      }
+    }
+
     // Convert base64 to buffer and upload to Supabase storage
-    const base64Data = base64Image.split(',')[1];
+    const base64Data = finalBase64Image.split(',')[1];
     const imageBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;

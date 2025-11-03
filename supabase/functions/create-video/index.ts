@@ -144,6 +144,12 @@ serve(async (req) => {
     if (!renderResponse.ok) {
       const error = await renderResponse.text();
       console.error('Shotstack render error:', error);
+      
+      // Check for credits issue
+      if (error.includes('credits') || error.includes('plan limits')) {
+        throw new Error('Shotstack account has insufficient credits. Please add credits at https://dashboard.shotstack.io/subscription');
+      }
+      
       throw new Error(`Failed to start video render: ${error}`);
     }
 
