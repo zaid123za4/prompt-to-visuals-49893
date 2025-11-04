@@ -80,49 +80,47 @@ export const useVideoGeneration = () => {
         const scene = scriptData.scenes[i];
         setProgress(40 + (i / scriptData.scenes.length) * 50);
 
-        try {
-          // Generate image
-          const { data: imageData, error: imageError } = await supabase.functions.invoke('generate-image', {
-            body: { 
-              description: scene.description,
-              style,
-              aspectRatio
-            }
-          });
-
-          // Generate voiceover using Groq TTS
-          const { data: audioData, error: audioError } = await supabase.functions.invoke('generate-voiceover', {
-            body: { 
-              text: scene.narration,
-              duration: scene.duration
-            }
-          });
-
-          if (imageError || audioError) {
-            console.error('Generation error for scene', i, { imageError, audioError });
-            scenesWithMedia.push({
-              ...scene,
-              imageUrl: imageError ? undefined : imageData?.imageUrl,
-              audioUrl: audioError ? undefined : audioData?.audioUrl,
-              status: 'completed'
-            });
-          } else {
-            scenesWithMedia.push({
-              ...scene,
-              imageUrl: imageData.imageUrl,
-              audioUrl: audioData.audioUrl,
-              status: 'completed'
-            });
+        // Generate image
+        const { data: imageData, error: imageError } = await supabase.functions.invoke('generate-image', {
+          body: { 
+            description: scene.description,
+            style,
+            aspectRatio
           }
-        } catch (error) {
-          console.error('Error generating media for scene', i, error);
-          scenesWithMedia.push({
-            ...scene,
-            imageUrl: undefined,
-            audioUrl: undefined,
-            status: 'failed'
-          });
+        });
+
+        if (imageError) {
+          console.error('Image generation failed for scene', i, imageError);
+          throw new Error('Image generation failed. Please check your Lovable AI credits or try again later.');
         }
+
+        if (!imageData?.imageUrl) {
+          throw new Error('No image generated for scene ' + (i + 1));
+        }
+
+        // Generate voiceover using Groq TTS
+        const { data: audioData, error: audioError } = await supabase.functions.invoke('generate-voiceover', {
+          body: { 
+            text: scene.narration,
+            duration: scene.duration
+          }
+        });
+
+        if (audioError) {
+          console.error('Audio generation failed for scene', i, audioError);
+          throw new Error('Audio generation failed. Please try again later.');
+        }
+
+        if (!audioData?.audioUrl) {
+          throw new Error('No audio generated for scene ' + (i + 1));
+        }
+
+        scenesWithMedia.push({
+          ...scene,
+          imageUrl: imageData.imageUrl,
+          audioUrl: audioData.audioUrl,
+          status: 'completed'
+        });
       }
 
       setGeneratedScenes(scenesWithMedia);
@@ -203,11 +201,12 @@ export const useVideoGeneration = () => {
     } catch (error: any) {
       console.error('Video generation error:', error);
       
-      let errorMessage = 'Failed to generate video';
+      let errorMessage = error.message || 'Failed to generate video';
+      
       if (error.message?.includes('Rate limit')) {
         errorMessage = 'Rate limit exceeded. Please try again later.';
-      } else if (error.message?.includes('Payment required')) {
-        errorMessage = 'Credits depleted. Please add more credits.';
+      } else if (error.message?.includes('Lovable AI credits') || error.message?.includes('credits')) {
+        errorMessage = 'AI service credits depleted. Please contact support or try again later.';
       }
       
       toast({
